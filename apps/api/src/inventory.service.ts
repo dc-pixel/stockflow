@@ -1,8 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
-import { StockMovementType } from '../../generated/prisma/client';
+import { StockMovementType } from '@prisma/client';
 
-type Tx = Parameters<PrismaService['$transaction']>[0];
 export type InventoryStatus = 'IN_STOCK' | 'LOW_STOCK' | 'CRITICAL' | 'OUT_OF_STOCK' | 'OVERSTOCKED';
 
 @Injectable()
