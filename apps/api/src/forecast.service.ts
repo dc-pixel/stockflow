@@ -7,10 +7,6 @@ export type ForecastPoint = { date: string; demand: number; kind: 'HISTORICAL' |
 export class ForecastService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Baseline forecast: weighted moving average over daily fulfilled sales.
-   * Weights increase toward recent observations so the model adapts to trend changes.
-   */
   static weightedMovingAverage(values: number[], window = 28): number {
     const sample = values.slice(-window);
     if (sample.length === 0) return 0;
@@ -39,7 +35,6 @@ export class ForecastService {
     const targetStock = Math.ceil(input.averageDailyDemand * (input.targetDays ?? Math.max(input.leadTimeDays * 2, 30)) + safetyStock);
     const projectedAvailable = input.availableStock + input.inboundStock - input.reservedStock;
     const recommendedOrderQuantity = Math.max(0, targetStock - projectedAvailable);
-
     return { leadDemand, safetyStock, reorderPoint, projectedAvailable, targetStock, recommendedOrderQuantity };
   }
 
@@ -48,11 +43,10 @@ export class ForecastService {
     if (!product) throw new Error('Product not found');
 
     const movements = await this.prisma.stockMovement.findMany({
-      where: { organizationId: undefined, productId, type: 'SALE' },
+      where: { productId, type: 'SALE', product: { organizationId } },
       orderBy: { createdAt: 'asc' },
       select: { quantity: true, createdAt: true },
     });
-
     const daily = new Map<string, number>();
     for (const movement of movements) {
       const key = movement.createdAt.toISOString().slice(0, 10);
@@ -63,7 +57,7 @@ export class ForecastService {
     const mean = historical.length ? historical.reduce((a, b) => a + b, 0) / historical.length : 0;
     const variance = historical.length ? historical.reduce((sum, value) => sum + (value - mean) ** 2, 0) / historical.length : 0;
     const stdDev = Math.sqrt(variance);
-    const inventory = await this.prisma.inventory.findMany({ where: { productId }, select: { quantity: true, reservedQuantity: true } });
+    const inventory = await this.prisma.inventory.findMany({ where: { productId, product: { organizationId } }, select: { quantity: true, reservedQuantity: true } });
     const available = inventory.reduce((sum, row) => sum + row.quantity, 0);
     const reserved = inventory.reduce((sum, row) => sum + row.reservedQuantity, 0);
     const inbound = await this.prisma.purchaseOrderItem.aggregate({
@@ -71,30 +65,9 @@ export class ForecastService {
       _sum: { quantity: true },
     });
     const inboundStock = inbound._sum.quantity ?? 0;
-    const recommendation = ForecastService.reorderRecommendation({
-      availableStock: available,
-      inboundStock,
-      reservedStock: reserved,
-      averageDailyDemand: avg,
-      demandStdDev: stdDev,
-      leadTimeDays: product.leadTimeDays,
-    });
-
+    const recommendation = ForecastService.reorderRecommendation({ availableStock: available, inboundStock, reservedStock: reserved, averageDailyDemand: avg, demandStdDev: stdDev, leadTimeDays: product.leadTimeDays });
     const points: ForecastPoint[] = historical.map((demand, index) => ({ date: `${index}`, demand, kind: 'HISTORICAL' }));
     for (let day = 1; day <= horizonDays; day += 1) points.push({ date: `+${day}`, demand: Math.max(0, Math.round(avg)), kind: 'FORECAST' });
-
-    return this.prisma.forecast.create({
-      data: {
-        organizationId,
-        productId,
-        method: 'WEIGHTED_MOVING_AVERAGE',
-        horizonDays,
-        points,
-        averageDailyDemand: avg,
-        safetyStock: recommendation.safetyStock,
-        reorderPoint: recommendation.reorderPoint,
-        recommendedOrderQuantity: recommendation.recommendedOrderQuantity,
-      },
-    });
+    return this.prisma.forecast.create({ data: { organizationId, productId, method: 'WEIGHTED_MOVING_AVERAGE', horizonDays, points, averageDailyDemand: avg, safetyStock: recommendation.safetyStock, reorderPoint: recommendation.reorderPoint, recommendedOrderQuantity: recommendation.recommendedOrderQuantity } });
   }
 }
