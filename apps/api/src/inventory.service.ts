@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, PrismaClient, StockMovementType } from '@prisma/client';
 import { PrismaService } from './prisma.service';
-import { StockMovementType } from '@prisma/client';
 
 export type InventoryStatus = 'IN_STOCK' | 'LOW_STOCK' | 'CRITICAL' | 'OUT_OF_STOCK' | 'OVERSTOCKED';
 
@@ -10,7 +10,7 @@ export class InventoryService {
 
   async adjust(input: { organizationId: string; productId: string; warehouseId: string; quantityDelta: number; type: StockMovementType; userId?: string; referenceType?: string; referenceId?: string; notes?: string; }) {
     if (!Number.isInteger(input.quantityDelta) || input.quantityDelta === 0) throw new BadRequestException('quantityDelta must be a non-zero integer');
-    return this.prisma.$transaction(async (tx: any) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const product = await tx.product.findFirst({ where: { id: input.productId, organizationId: input.organizationId, isActive: true } });
       if (!product) throw new NotFoundException('Product not found');
       const warehouse = await tx.warehouse.findFirst({ where: { id: input.warehouseId, organizationId: input.organizationId } });
