@@ -12,7 +12,12 @@ async function bootstrap() {
   app.use(helmet());
   app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }));
-  app.enableCors({ origin: true, credentials: true });
+
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.enableCors({ origin: allowedOrigins, credentials: true });
 
   const config = new DocumentBuilder().setTitle('StockFlow API').setDescription('Inventory, purchasing, sales, forecasting and intelligence API').setVersion('0.1.0').addBearerAuth().build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
