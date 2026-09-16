@@ -19,8 +19,15 @@ async function bootstrap() {
     .filter(Boolean);
   app.enableCors({ origin: allowedOrigins, credentials: true });
 
-  const config = new DocumentBuilder().setTitle('StockFlow API').setDescription('Inventory, purchasing, sales, forecasting and intelligence API').setVersion('0.1.0').addBearerAuth().build();
-  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('StockFlow API')
+      .setDescription('Inventory, purchasing, sales, forecasting and intelligence API')
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .build();
+    SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
+  }
 
   await app.listen(Number(process.env.PORT ?? 4000));
 }
