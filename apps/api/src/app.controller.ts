@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 
 @Controller()
@@ -7,8 +7,15 @@ export class AppController {
 
   @Get('health')
   async health() {
-    let database = 'connected';
-    try { await this.prisma.$queryRaw`SELECT 1`; } catch { database = 'disconnected'; }
-    return { status: database === 'connected' ? 'ok' : 'degraded', database, timestamp: new Date().toISOString() };
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch {
+      throw new HttpException(
+        { status: 'degraded', database: 'disconnected', timestamp: new Date().toISOString() },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    return { status: 'ok', database: 'connected', timestamp: new Date().toISOString() };
   }
 }
