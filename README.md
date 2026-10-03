@@ -42,3 +42,15 @@ Use the seeded demo account documented in `.env.example`/seed output for local d
 ## Forecasting
 
 The first forecasting release uses moving-average baselines and weighted moving averages from persisted sales history. Forecasts expose their methodology and are not presented as opaque AI predictions. Reorder recommendations combine current available stock, inbound stock, reserved stock, demand during supplier lead time, and safety stock derived from demand variability when sufficient history exists.
+
+## Development automation
+
+Keep automation focused on useful engineering work: tests, documentation checks, dependency maintenance, linting, and reproducible CI. Scheduled jobs should not generate meaningless source changes solely to increase contribution counts.
+
+## Quality bar
+
+Before committing a change:
+
+- Run the relevant tests and lint checks.
+- Update documentation when behavior or setup changes.
+- Keep commits focused and traceable to actual engineering work.
