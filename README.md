@@ -29,6 +29,22 @@ npm run dev
 
 The web app runs on `http://localhost:3000` and the API on `http://localhost:4000`.
 
+## Testing and quality checks
+
+Run the API's unit tests from the repository root:
+
+```bash
+npm run test --workspace=@stockflow/api
+```
+
+Type-check the API without emitting build output:
+
+```bash
+npm run lint --workspace=@stockflow/api
+```
+
+These commands use the scripts defined by `apps/api/package.json`. Run them after changing API services or tests. The web workspace does not currently define a test script, so do not assume the root workspace test command covers frontend tests.
+
 ## Docker
 
 ```bash
